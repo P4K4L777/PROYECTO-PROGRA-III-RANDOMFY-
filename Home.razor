@@ -1,0 +1,68 @@
+﻿@page "/"
+@using SpotifyAPI.Web
+@inject IHttpClientFactory ClientFactory
+@rendermode InteractiveServer
+
+<div class="container mt-4">
+    <h1 class="text-center"> RandomFy</h1>
+
+    <div class="input-group mb-3">
+        <input type="text" class="form-control" @bind="busqueda" @bind:event="oninput" placeholder="Buscar..." />
+        <button type="button" class="btn btn-primary" @onclick="EjecutarBusqueda">Buscar</button>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h3>Siguiente (Cola)</h3>
+            <ul class="list-group">
+                @foreach (var t in ColaLocal)
+                {
+                    <li class="list-group-item">@t.Name</li>
+                }
+            </ul>
+            <button class="btn btn-success mt-2 w-100" @onclick="Reproducir">Reproducir</button>
+        </div>
+        <div class="col-md-6">
+            <h3>Historial (Pila)</h3>
+            <ul class="list-group">
+                @foreach (var t in PilaLocal)
+                {
+                    <li class="list-group-item">@t.Name</li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string busqueda = "";
+    private List<FullTrack> ColaLocal = new();
+    private List<FullTrack> PilaLocal = new();
+
+    private HttpClient GetClient()
+    {
+        var client = ClientFactory.CreateClient();
+        client.BaseAddress = new Uri("http://apiservice");
+        return client;
+    }
+
+    private async Task EjecutarBusqueda()
+    {
+        var http = GetClient();
+        await http.PostAsync($"api/spotify/buscar?termino={busqueda}", null);
+        await ActualizarListas();
+    }
+
+    private async Task Reproducir()
+    {
+        await GetClient().PostAsync("api/spotify/reproducir", null);
+        await ActualizarListas();
+    }
+
+    private async Task ActualizarListas()
+    {
+        var http = GetClient();
+        ColaLocal = await http.GetFromJsonAsync<List<FullTrack>>("api/spotify/cola") ?? new();
+        PilaLocal = await http.GetFromJsonAsync<List<FullTrack>>("api/spotify/pila") ?? new();
+    }
+}
